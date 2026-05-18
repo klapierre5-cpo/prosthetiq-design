@@ -1,188 +1,147 @@
 import logo from './assets/prosthetiq_logic_logo.png';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { supabase } from './supabaseClient';
 
 function App() {
-  const k1Questions = [
-    { id: 'T001', text: 'Cognitive ability to safely use a prosthesis' },
-    { id: 'T002', text: 'Safe transfers' },
-    { id: 'T003', text: 'Ambulation on a flat surface inside the home' },
-  ];
 
-  const k2Questions = [
-    { id: 'T004', text: 'Ambulation on flat, smooth surfaces outside the home' },
-    { id: 'T005', text: 'Negotiation of a curb' },
-    { id: 'T006', text: 'Access to public or private transportation' },
-    { id: 'T007', text: 'Negotiation of 1–2 stairs' },
-    { id: 'T008', text: 'Traversal of low-level environmental barriers (e.g. ADA-compliant ramp)' },
-  ];
-
-  const k3Questions = [
-    { id: 'T009', text: 'Walking on terrain that varies in texture and level' },
-    { id: 'T010', text: 'Negotiation of 3–7 consecutive stairs' },
-    { id: 'T011', text: 'Opening and closing doors while ambulating' },
-    { id: 'T012', text: 'Ambulation through crowded areas' },
-    { id: 'T013', text: 'Variable cadence ambulation' },
-    { id: 'T014', text: 'Crossing a controlled intersection within the allowed time' },
-    { id: 'T015', text: 'Dual ambulation tasks (e.g. carrying an item while walking)' },
-  ];
-
-  const k4Questions = [
-    { id: 'T016', text: 'Running' },
-    { id: 'T017', text: 'Repetitive stair climbing' },
-    { id: 'T018', text: 'Climbing steep hills' },
-    { id: 'T019', text: 'Caregiving for another individual' },
-    { id: 'T020', text: 'Home maintenance (e.g. repairs, cleaning)' },
-  ];
-
-  const clinicalNeedsQuestions = [
-    { id: 'CN001', text: 'Improved gait stability' },
-    { id: 'CN002', text: 'Enhanced safety during ambulation to reduce fall risk' },
-    { id: 'CN003', text: 'Additional residual limb protection' },
-    { id: 'CN004', text: 'Shock absorption or impact reduction' },
-    { id: 'CN005', text: 'Increased comfort for prolonged prosthetic use' },
-    { id: 'CN006', text: 'Additional energy efficiency to reduce fatigue' },
-    { id: 'CN007', text: 'Improved rollover or smoother gait mechanics' },
-  ];
-
-  const environmentalQuestions = [
-    { id: 'EN001', text: 'Uneven terrain (grass, gravel, slopes)' },
-    { id: 'EN002', text: 'Stairs or curbs regularly' },
-    { id: 'EN003', text: 'Community ambulation outside the home' },
-    { id: 'EN004', text: 'Long distances or extended periods of walking' },
-    { id: 'EN005', text: 'Higher-level or demanding activities (work, recreation, exercise)' },
-  ];
-
-  const physicalConditionQuestions = [
-    { id: 'CC001', text: 'The current prosthesis demonstrates mechanical wear, damage, or functional failure' },
-    { id: 'CC002', text: 'The current socket no longer fits appropriately or causes discomfort' },
-    { id: 'CC003', text: 'The patient’s residual limb volume, anatomy, or physical condition has changed' },
-    { id: 'CC004', text: 'The patient’s functional or mobility needs have changed' },
-  ];
-
+  const designPhases = [
+  'Immediate Post-Operative',
+  'Initial',
+  'Preparatory',
+  'Definitive',
+  'Socket Replacement',
+];
+  
   const [answers, setAnswers] = useState({});
+  const [designRows, setDesignRows] = useState([]);
+  const [selectedDesignPhase, setSelectedDesignPhase] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [replacementReason, setReplacementReason] = useState('');
+  const [selectedDesignFeatures, setSelectedDesignFeatures] = useState([]);
+  const [selectedFunctionalTasks, setSelectedFunctionalTasks] = useState([]);
 
-  const handleChange = (id) => {
-    setAnswers((prev) => ({
-      ...prev,
-      [id]: !prev[id],
-    }));
+const [expandedSections, setExpandedSections] = useState({
+  socketDesign: false,
+  suspension: false,
+  softGoods: false,
+  protectiveCovers: false,
+});
+
+ const clearAll = () => {
+  setAnswers({});
+  setSelectedDesignPhase('');
+  setSelectedCategory('');
+  setReplacementReason('');
+  setSelectedDesignFeatures([]);
+  setSelectedFunctionalTasks([]);
+
+  setExpandedSections({
+    socketDesign: false,
+    suspension: false,
+    softGoods: false,
+    protectiveCovers: false,
+  });
+};
+useEffect(() => {
+  const fetchDesignRows = async () => {
+    const { data, error } = await supabase
+      .from('clinical_benefits_library_design')
+      .select('*');
+
+    if (error) {
+      console.error('Supabase error:', error);
+    } else {
+      console.log('Design rows:', data);
+      setDesignRows(data);
+    }
   };
 
-  const handleSelectAll = (arr) => {
-    setAnswers((prev) => {
-      const updated = { ...prev };
-      const allSelected = arr.every((q) => !!prev[q.id]);
+  fetchDesignRows();
+}, []);
 
-      arr.forEach((q) => {
-        updated[q.id] = !allSelected;
-      });
+const filteredCategories = [
+  ...new Set(
+    designRows
+      .filter(
+        (row) =>
+          row.device_phase?.includes(selectedDesignPhase)
+      )
+      .map((row) => row.category)
+      .filter(Boolean)
+  ),
+];
 
-      return updated;
-    });
-  };
+const socketDesignRows = designRows.filter(
+  (row) =>
+    row.category ===
+    `${selectedCategory.replace(' Base', '')} Socket Design`
+);
 
-  const clearAll = () =>
-    setAnswers({});
+const softGoodsRows = designRows.filter(
+  (row) =>
+    row.category ===
+    `${selectedCategory.replace(' Base', '')} Soft Goods`
+);
 
-  const hasAnyChecked = (arr) => arr.some((q) => !!answers[q.id]);
-  const areAllChecked = (arr) => arr.length > 0 && arr.every((q) => !!answers[q.id]);
+const miscellaneousRows = designRows.filter(
+  (row) =>
+    row.category ===
+    `${selectedCategory.replace(' Base', '')} Miscellaneous`
+);
 
-  const showK2 = areAllChecked(k1Questions);
-  const showK3 = areAllChecked(k2Questions);
-  const showK4 = areAllChecked(k3Questions);
+const suspensionRows = designRows.filter(
+  (row) =>
+    row.category ===
+    'Lower Extremity Fit & Suspension'
+);
 
-  const showClinicalDetails = !!answers.CN_YES;
-  const showEnvironmentalDetails = !!answers.EN_YES;
-  const isExistingProstheticUser = answers.NEW_PROSTHETIC_USER === 'no';
+const functionalTasks = {
+  K1: [
+    'Cognitive ability to safely use a prosthesis',
+    'Safe transfers',
+    'Ambulation on a flat surface inside the home',
+  ],
 
-  const joinList = (items) => {
-    if (items.length === 0) return '';
-    if (items.length === 1) return items[0];
-    if (items.length === 2) return `${items[0]} and ${items[1]}`;
-    return `${items.slice(0, -1).join(', ')}, and ${items[items.length - 1]}`;
-  };
+  K2: [
+    'Ambulation on flat, smooth surfaces outside the home',
+    'Negotiation of a curb',
+    'Access to public or private transportation',
+    'Negotiation of 1–2 stairs',
+    'Traversal of low-level environmental barriers (e.g. ADA-compliant ramp)',
+  ],
+
+  K3: [
+    'Walking on terrain that varies in texture and level',
+    'Negotiation of 3–7 consecutive stairs',
+    'Opening and closing doors while ambulating',
+    'Ambulation through crowded areas',
+    'Variable cadence ambulation',
+    'Crossing a controlled intersection within the allowed time',
+    'Dual ambulation tasks (e.g. carrying an item while walking)',
+  ],
+
+  K4: [
+    'Running',
+    'Repetitive stair climbing',
+    'Climbing steep hills',
+    'Caregiving for another individual',
+    'Home maintenance (e.g. repairs, cleaning)',
+  ],
+};
 
   const instructionStyle = {
     color: '#007BFF',
     fontWeight: '700',
     marginBottom: '15px',
   };
-
-  const subPromptStyle = {
-    color: '#007BFF',
-    fontWeight: '700',
-    marginTop: '10px',
-    marginBottom: '12px',
-  };
-
-  const helperBoxStyle = {
-    backgroundColor: '#f4f8ff',
-    border: '1px solid #cfe0ff',
-    borderRadius: '8px',
-    padding: '12px 14px',
-    marginTop: '12px',
-    marginBottom: '16px',
-    color: '#1f3f75',
-    fontWeight: '600',
-    lineHeight: '1.5',
-  };
-
-  const renderGroup = (arr) =>
-    arr.map((q) => (
-      <div key={q.id} style={{ marginBottom: '10px' }}>
-        <label>
-          <input
-            type="checkbox"
-            checked={!!answers[q.id]}
-            onChange={() => handleChange(q.id)}
-            style={{ marginRight: '10px' }}
-          />
-          {q.text}
-        </label>
-      </div>
-    ));
-
-  const renderSection = (title, arr) => (
-    <div
-      style={{
-        marginBottom: '20px',
-        padding: '15px',
-        border: '1px solid #ddd',
-        borderRadius: '8px',
-      }}
-    >
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          gap: '10px',
-          flexWrap: 'wrap',
-          marginBottom: '10px',
-        }}
-      >
-        <h3 style={{ margin: 0 }}>{title}</h3>
-        <label>
-          <input
-            type="checkbox"
-            checked={areAllChecked(arr)}
-            onChange={() => handleSelectAll(arr)}
-            style={{ marginRight: '8px' }}
-          />
-          Select All
-        </label>
-      </div>
-      {renderGroup(arr)}
-    </div>
-  );
-
+  
   const getKLevel = () => {
-    if (hasAnyChecked(k4Questions)) return 'K4';
-    if (hasAnyChecked(k3Questions)) return 'K3';
-    if (hasAnyChecked(k2Questions)) return 'K2';
-    if (hasAnyChecked(k1Questions)) return 'K1';
-    return 'Unknown';
-  };
+  if (answers.K_LEVEL === 'K1') return 'K1';
+  if (answers.K_LEVEL === 'K2') return 'K2';
+  if (answers.K_LEVEL === 'K3') return 'K3';
+  if (answers.K_LEVEL === 'K4') return 'K4';
+  return 'Unknown';
+};
 
   const getKLevelSentence = () => {
     const kLevel = getKLevel();
@@ -202,176 +161,175 @@ function App() {
     return 'The patient’s functional level is currently unclear based on the information provided.';
   };
 
-  const getPhysicalConditionSentence = () => {
-    const selected = [];
-    if (answers.CC001) selected.push('the current prosthesis demonstrates mechanical wear, damage, or functional failure');
-    if (answers.CC002) selected.push('the current socket no longer fits appropriately or causes discomfort');
-    if (answers.CC003) selected.push('the patient’s residual limb volume, anatomy, or physical condition has changed');
-    if (answers.CC004) selected.push('the patient’s functional or mobility needs have changed');
 
-    if (!selected.length) return '';
-    return `The patient requires prosthetic replacement due to documented physiological change, socket fit deterioration, and/or prosthetic component wear, including ${joinList(selected)}.`;
-  };
-
-  const getClinicalNeedsSentence = () => {
-    const selected = [];
-    if (answers.CN001) selected.push('improved gait stability');
-    if (answers.CN002) selected.push('enhanced safety during ambulation to reduce fall risk');
-    if (answers.CN003) selected.push('additional residual limb protection');
-    if (answers.CN004) selected.push('shock absorption or impact reduction');
-    if (answers.CN005) selected.push('increased comfort for prolonged prosthetic use');
-    if (answers.CN006) selected.push('additional energy efficiency to reduce fatigue');
-    if (answers.CN007) selected.push('improved rollover or smoother gait mechanics');
-
-    if (!selected.length) return '';
-    return `The patient’s clinical presentation requires ${joinList(selected)}.`;
-  };
-
-  const getEnvironmentalSentence = () => {
-    const selected = [];
-    if (answers.EN001) selected.push('safe navigation of uneven terrain');
-    if (answers.EN002) selected.push('regular stair and curb negotiation');
-    if (answers.EN003) selected.push('community ambulation');
-    if (answers.EN004) selected.push('long-distance or extended walking');
-    if (answers.EN005) selected.push('higher-level or demanding activities');
-
-    if (!selected.length) return '';
-    return `The patient’s environment requires ${joinList(selected)}.`;
-  };
-
-  const getK2K3ClinicalItems = () => {
-    const selected = [];
-    if (answers.CN001) selected.push('improved gait stability');
-    if (answers.CN002) selected.push('enhanced safety during ambulation with reduced fall risk');
-    if (answers.CN003) selected.push('additional residual limb protection');
-    if (answers.CN004) selected.push('shock absorption or impact reduction');
-    if (answers.CN005) selected.push('improved comfort for prolonged prosthetic use');
-    if (answers.CN006) selected.push('greater energy efficiency to reduce fatigue');
-    if (answers.CN007) selected.push('improved rollover and smoother gait mechanics');
-    return selected;
-  };
-
-  const getK2K3EnvironmentalItems = () => {
-    const selected = [];
-    if (answers.EN001) selected.push('uneven terrain such as grass, gravel, or slopes');
-    if (answers.EN002) selected.push('regular stair and curb negotiation');
-    if (answers.EN003) selected.push('community ambulation outside the home');
-    if (answers.EN004) selected.push('long-distance or extended walking demands');
-    if (answers.EN005) selected.push('higher-level functional demands related to work, recreation, or exercise');
-    return selected;
-  };
-
-  const getK2K3TechnologySentence = () => {
-    const kLevel = getKLevel();
-    const clinicalItems = getK2K3ClinicalItems();
-    const environmentalItems = getK2K3EnvironmentalItems();
-
-    if (!answers.K2_K3_YES) return '';
-
-    const benefitParts = [];
-
-    if (clinicalItems.length) {
-      benefitParts.push(clinicalItems.join(', '));
-    }
-
-    if (environmentalItems.length) {
-      benefitParts.push(environmentalItems.join(', '));
-    }
-
-    const combinedBenefits = benefitParts.length
-      ? joinList(benefitParts)
-      : 'the patient’s documented functional and safety needs';
-
-    if (kLevel === 'K2') {
-  return `Although the patient demonstrates functional abilities consistent with a K2 level, K3-level microprocessor knee technology is medically necessary due to ${combinedBenefits}. The selected technology is expected to improve functional health outcomes including stability, safety, and reduction in fall risk while also improving performance of activities of daily living. Lower-level knee systems have been considered and ruled out because they would not sufficiently meet the patient’s functional and medical needs. The prescribed microprocessor knee is indicated for K2 functional level use, includes integrated stumble-recovery technology, and the patient is able to use a device requiring daily charging and is able to understand and respond to error alerts and alarms.`;
-}
-
-return `Microprocessor knee technology is medically necessary due to ${combinedBenefits}. The selected technology is expected to improve functional mobility, gait efficiency, stability, safety, and performance of activities of daily living while supporting variable cadence ambulation and community mobility demands. Lower-level knee systems have been considered and ruled out because they would not sufficiently meet the patient’s functional and medical needs. The patient demonstrates the cognitive ability and functional capacity necessary to safely and effectively utilize advanced prosthetic knee technology.`;
-};
-
-  const getClosingSentence = () => {
-  const hasPhysicalCondition =
-    !!answers.CC001 || !!answers.CC002 || !!answers.CC003 || !!answers.CC004;
-
-  const hasClinicalNeeds =
-    !!answers.CN001 || !!answers.CN002 || !!answers.CN003 || !!answers.CN004 ||
-    !!answers.CN005 || !!answers.CN006 || !!answers.CN007;
-
-  const hasEnvironmentalNeeds =
-    !!answers.EN001 || !!answers.EN002 || !!answers.EN003 || !!answers.EN004 || !!answers.EN005;
-
-  const hasK2K3TechnologyNeed = getKLevel() === 'K2' && !!answers.K2_K3_YES;
-
-  const isNewAmputee = answers.NEW_PROSTHETIC_USER === 'yes';
-
-  if (isNewAmputee) {
-    return 'The patient presents as a new amputee requiring initial prosthetic intervention in order to regain as much of their pre-amputation functional capacity as possible. Based on the patient’s current functional level, clinical needs, and environmental demands, a prosthesis is medically necessary to support safe ambulation, mobility, and independence.';
-  }
-  if (hasPhysicalCondition || hasClinicalNeeds || hasEnvironmentalNeeds || hasK2K3TechnologyNeed) {
-    return 'Based on the patient’s functional level, clinical needs, environmental demands, and documented change in condition, a new prosthetic socket and/or prosthesis is medically necessary to support safe and effective ambulation.';
-  }
-
-  return '';
-};
-
-  const kLevel = getKLevel();
-  const kLevelSentence = getKLevelSentence();
-  const physicalConditionSentence = getPhysicalConditionSentence();
-  const clinicalNeedsSentence = getClinicalNeedsSentence();
-  const environmentalSentence = getEnvironmentalSentence();
-  const k2K3TechnologySentence = getK2K3TechnologySentence();
-  const closingSentence = getClosingSentence();
+const kLevel = getKLevel();
+const kLevelSentence = getKLevelSentence();
+  
 
   return (
     <div style={{ padding: '30px', maxWidth: '900px', margin: '0 auto' }}>
       <div style={{ textAlign: 'center' }}>
         <img src={logo} alt="ProsthetIQ Logic Logo" style={{ height: '100px' }} />
-        <h1>ProsthetIQ Logic</h1>
+        <h1>ProsthetIQ Design</h1>
       </div>
 
-      <h2>Functional Level</h2>
-      <p style={instructionStyle}>
-        Check tasks. Next level appears only when all are selected.
-      </p>
+<h2>Design Phase</h2>
 
-      {renderSection('K1 Tasks', k1Questions)}
-      {showK2 && renderSection('K2 Tasks', k2Questions)}
-      {showK3 && renderSection('K3 Tasks', k3Questions)}
-      {showK4 && renderSection('K4 Tasks', k4Questions)}
+<p style={instructionStyle}>
+  Select the current prosthetic design phase.
+</p>
 
-      {(kLevel === 'K2' || kLevel === 'K3' || kLevel === 'K4') && (
-        <div
-          style={{
-            marginBottom: '20px',
-            padding: '15px',
-            border: '1px solid #ddd',
-            borderRadius: '8px',
-          }}
-        >
-          <h2 style={{ marginTop: 0 }}>Advanced Knee Technology </h2>
-          <p style={instructionStyle}>
-            Does this patient require advanced knee technology (such as a microprocessor knee) for safety, 	 	    stability, or improved mobility?
-          </p>
-          <label>
+<select
+  value={selectedDesignPhase}
+  onChange={(e) => setSelectedDesignPhase(e.target.value)}
+  style={{
+    padding: '10px',
+    borderRadius: '8px',
+    marginBottom: '25px',
+    minWidth: '300px',
+  }}
+>
+  <option value="">Select Design Phase</option>
+
+  {designPhases.map((phase) => (
+    <option key={phase} value={phase}>
+      {phase}
+    </option>
+  ))}
+</select>
+
+{selectedDesignPhase && (
+  <>
+    <h2>Category</h2>
+
+    <p style={instructionStyle}>
+      Select the anatomical prosthetic category.
+    </p>
+
+    <select
+      value={selectedCategory}
+      onChange={(e) => setSelectedCategory(e.target.value)}
+      style={{
+        padding: '10px',
+        borderRadius: '8px',
+        marginBottom: '25px',
+        minWidth: '300px',
+      }}
+    >
+      <option value="">Select Category</option>
+
+      {filteredCategories.map((category) => (
+        <option key={category} value={category}>
+          {category.replace(' Base', '')}
+        </option>
+      ))}
+    </select>
+  </>
+)}
+
+<h2>Functional Level</h2>
+
+<p style={instructionStyle}>
+  Select the patient’s current functional level.
+</p>
+
+<div
+  style={{
+    display: 'flex',
+    gap: '12px',
+    flexWrap: 'wrap',
+    marginBottom: '25px',
+  }}
+>
+  {['K1', 'K2', 'K3', 'K4'].map((level) => (
+    <button
+      key={level}
+      onClick={() => {
+  setAnswers((prev) => ({
+    ...prev,
+    K_LEVEL: level,
+  }));
+
+  setSelectedFunctionalTasks(
+    functionalTasks[level]
+  );
+}}
+      style={{
+        padding: '12px 20px',
+        borderRadius: '8px',
+        border:
+          answers.K_LEVEL === level
+            ? '2px solid #6f42c1'
+            : '1px solid #ccc',
+        backgroundColor:
+          answers.K_LEVEL === level ? '#f3ebff' : 'white',
+        cursor: 'pointer',
+        fontWeight: '700',
+        minWidth: '80px',
+      }}
+    >
+      {level}
+    </button>
+  ))}
+</div>
+
+{answers.K_LEVEL && (
+  <div style={{ marginBottom: '25px' }}>
+    <h3>
+      {answers.K_LEVEL} Functional Characteristics
+    </h3>
+
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '10px',
+        marginTop: '15px',
+      }}
+    >
+      {functionalTasks[answers.K_LEVEL]?.map((task) => {
+        const isSelected =
+          selectedFunctionalTasks.includes(task);
+
+        return (
+          <label
+            key={task}
+            style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '10px',
+            }}
+          >
             <input
               type="checkbox"
-              checked={!!answers.K2_K3_YES}
-              onChange={() => handleChange('K2_K3_YES')}
-              style={{ marginRight: '8px' }}
+              checked={isSelected}
+              onChange={() => {
+                if (isSelected) {
+                  setSelectedFunctionalTasks(
+                    selectedFunctionalTasks.filter(
+                      (t) => t !== task
+                    )
+                  );
+                } else {
+                  setSelectedFunctionalTasks([
+                    ...selectedFunctionalTasks,
+                    task,
+                  ]);
+                }
+              }}
+              style={{ marginTop: '4px' }}
             />
-            Yes
+
+            <span>{task}</span>
           </label>
+        );
+      })}
+    </div>
+  </div>
+)}
 
-          {answers.K2_K3_YES && (
-            <div style={helperBoxStyle}>
-              Patients who require advanced knee technology must meet specific documentation criteria.  
-		Select applicable clinical or environmental factors below to support medical necessity.
-            </div>
-          )}
-        </div>
-      )}
 
-      <h2>Physical Condition</h2>
+      <h2>Patient Presentation</h2>
 
 <p style={instructionStyle}>
   Is the patient a new prosthetic user?
@@ -413,58 +371,354 @@ return `Microprocessor knee technology is medically necessary due to ${combinedB
   No — patient has an existing prosthesis
 </label>
 
-{isExistingProstheticUser && (
+{answers.NEW_PROSTHETIC_USER === 'no' && (
   <>
-    <p style={subPromptStyle}>
-      If the patient has a device, please select the reason for treatment below.
+    <p style={instructionStyle}>
+      Select the primary reason replacement prosthetic care is required.
     </p>
-    {renderGroup(physicalConditionQuestions)}
+
+    <select
+      value={replacementReason}
+      onChange={(e) =>
+        setReplacementReason(e.target.value)
+      }
+      style={{
+        padding: '10px',
+        borderRadius: '8px',
+        marginBottom: '25px',
+        minWidth: '350px',
+      }}
+    >
+      <option value="">
+        Select Replacement Reason
+      </option>
+
+      <option value="irreparable">
+        Irreparable wear or damage
+      </option>
+
+      <option value="physiological">
+        Physiological change (weight or residual limb change)
+      </option>
+
+      <option value="repair_cost">
+        Repair cost exceeds 60% of replacement
+      </option>
+    </select>
   </>
 )}
 
-      <h2>Clinical Needs</h2>
-      <p style={instructionStyle}>
-        Does the patient have any clinical conditions that require special attention?
-      </p>
-      <label>
-        <input
-          type="checkbox"
-          checked={!!answers.CN_YES}
-          onChange={() => handleChange('CN_YES')}
-          style={{ marginRight: '8px' }}
-        />
-        Yes
-      </label>
+{socketDesignRows.length > 0 && (
+  <>
+    <button
+  onClick={() =>
+    setExpandedSections((prev) => ({
+      ...prev,
+      socketDesign: !prev.socketDesign,
+    }))
+  }
+  style={{
+    width: '100%',
+    textAlign: 'left',
+    padding: '12px',
+    borderRadius: '8px',
+    border: '1px solid #ccc',
+    backgroundColor: '#f3ebff',
+    fontWeight: '700',
+    cursor: 'pointer',
+    marginBottom: '10px',
+  }}
+>
+  {expandedSections.socketDesign ? '▼' : '▶'} Socket Design
+</button>
 
-      {showClinicalDetails && (
-        <>
-          <p style={subPromptStyle}>Check all that apply.</p>
-          {renderGroup(clinicalNeedsQuestions)}
-        </>
-      )}
+    {expandedSections.socketDesign && (
+  <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '10px',
+        marginBottom: '25px',
+      }}
+    >
+      {socketDesignRows.map((row) => {
+        const isSelected =
+          selectedDesignFeatures.includes(row.id);
 
-      <h2>Environmental Needs</h2>
-      <p style={instructionStyle}>
-        Does your patient need to negotiate any of these environmental obstacles?
-      </p>
-      <label>
-        <input
-          type="checkbox"
-          checked={!!answers.EN_YES}
-          onChange={() => handleChange('EN_YES')}
-          style={{ marginRight: '8px' }}
-        />
-        Yes
-      </label>
+        return (
+          <label
+            key={row.id}
+            style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '10px',
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={isSelected}
+              onChange={() => {
+                if (isSelected) {
+                  setSelectedDesignFeatures(
+                    selectedDesignFeatures.filter(
+                      (id) => id !== row.id
+                    )
+                  );
+                } else {
+                  setSelectedDesignFeatures([
+                    ...selectedDesignFeatures,
+                    row.id,
+                  ]);
+                }
+              }}
+              style={{ marginTop: '4px' }}
+            />
 
-      {showEnvironmentalDetails && (
-        <>
-          <p style={subPromptStyle}>Check all that apply.</p>
-          {renderGroup(environmentalQuestions)}
-        </>
-      )}
+            <span>
+  {row.construction_type}
+</span>
 
-      <div style={{ marginTop: '20px' }}>
+          </label>
+        );
+      })}
+    </div>
+)}
+  </>
+)}
+
+{suspensionRows.length > 0 && (
+  <>
+    <button
+  onClick={() =>
+    setExpandedSections((prev) => ({
+      ...prev,
+      suspension: !prev.suspension,
+    }))
+  }
+  style={{
+    width: '100%',
+    textAlign: 'left',
+    padding: '12px',
+    borderRadius: '8px',
+    border: '1px solid #ccc',
+    backgroundColor: '#f3ebff',
+    fontWeight: '700',
+    cursor: 'pointer',
+    marginBottom: '10px',
+  }}
+>
+  {expandedSections.suspension ? '▼' : '▶'} Suspension
+</button>
+
+    {expandedSections.suspension && (
+  <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '10px',
+        marginBottom: '25px',
+      }}
+    >
+      {suspensionRows.map((row) => {
+        const isSelected =
+          selectedDesignFeatures.includes(row.id);
+
+        return (
+          <label
+            key={row.id}
+            style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '10px',
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={isSelected}
+              onChange={() => {
+                if (isSelected) {
+                  setSelectedDesignFeatures(
+                    selectedDesignFeatures.filter(
+                      (id) => id !== row.id
+                    )
+                  );
+                } else {
+                  setSelectedDesignFeatures([
+                    ...selectedDesignFeatures,
+                    row.id,
+                  ]);
+                }
+              }}
+              style={{ marginTop: '4px' }}
+            />
+
+            <span>
+  {row.construction_type}
+</span>
+
+          </label>
+        );
+      })}
+    </div>
+)}
+  </>
+)}
+
+{softGoodsRows.length > 0 && (
+  <>
+    <button
+  onClick={() =>
+    setExpandedSections((prev) => ({
+      ...prev,
+      softGoods: !prev.softGoods,
+    }))
+  }
+  style={{
+    width: '100%',
+    textAlign: 'left',
+    padding: '12px',
+    borderRadius: '8px',
+    border: '1px solid #ccc',
+    backgroundColor: '#f3ebff',
+    fontWeight: '700',
+    cursor: 'pointer',
+    marginBottom: '10px',
+  }}
+>
+  {expandedSections.softGoods ? '▼' : '▶'} Soft Goods
+</button>
+
+    {expandedSections.softGoods && (
+  <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '10px',
+        marginBottom: '25px',
+      }}
+    >
+      {softGoodsRows.map((row) => {
+        const isSelected =
+          selectedDesignFeatures.includes(row.id);
+
+        return (
+          <label
+            key={row.id}
+            style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '10px',
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={isSelected}
+              onChange={() => {
+                if (isSelected) {
+                  setSelectedDesignFeatures(
+                    selectedDesignFeatures.filter(
+                      (id) => id !== row.id
+                    )
+                  );
+                } else {
+                  setSelectedDesignFeatures([
+                    ...selectedDesignFeatures,
+                    row.id,
+                  ]);
+                }
+              }}
+              style={{ marginTop: '4px' }}
+            />
+
+            <span>
+  {row.construction_type}
+</span>
+
+          </label>
+        );
+      })}
+    </div>
+)}
+  </>
+)}
+
+{miscellaneousRows.length > 0 && (
+  <>
+    <button
+  onClick={() =>
+    setExpandedSections((prev) => ({
+      ...prev,
+      protectiveCovers: !prev.protectiveCovers,
+    }))
+  }
+  style={{
+    width: '100%',
+    textAlign: 'left',
+    padding: '12px',
+    borderRadius: '8px',
+    border: '1px solid #ccc',
+    backgroundColor: '#f3ebff',
+    fontWeight: '700',
+    cursor: 'pointer',
+    marginBottom: '10px',
+  }}
+>
+  {expandedSections.protectiveCovers ? '▼' : '▶'} Protective Covers
+</button>
+
+    {expandedSections.protectiveCovers && (
+  <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '10px',
+        marginBottom: '25px',
+      }}
+    >
+      {miscellaneousRows.map((row) => {
+        const isSelected =
+          selectedDesignFeatures.includes(row.id);
+
+        return (
+          <label
+            key={row.id}
+            style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '10px',
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={isSelected}
+              onChange={() => {
+                if (isSelected) {
+                  setSelectedDesignFeatures(
+                    selectedDesignFeatures.filter(
+                      (id) => id !== row.id
+                    )
+                  );
+                } else {
+                  setSelectedDesignFeatures([
+                    ...selectedDesignFeatures,
+                    row.id,
+                  ]);
+                }
+              }}
+              style={{ marginTop: '4px' }}
+            />
+
+            <span>
+  {row.construction_type}
+</span>
+          </label>
+        );
+      })}
+    </div>
+)}
+  </>
+)}
+             <div style={{ marginTop: '20px' }}>
         <button
           onClick={clearAll}
           style={{
@@ -488,16 +742,56 @@ return `Microprocessor knee technology is medically necessary due to ${combinedB
           borderRadius: '8px',
         }}
       >
-        <h2>Documentation Guidance for Coverage</h2>
+        <h2>Clinical Design Summary</h2>
         <p>
           <strong>K-Level:</strong> {kLevel}
         </p>
+        <p>
+  	The patient is being evaluated for a{' '}
+  	<strong>{selectedDesignPhase}</strong> prosthetic design.
+	</p>
         <p>{kLevelSentence}</p>
-        {physicalConditionSentence && <p>{physicalConditionSentence}</p>}
-        {clinicalNeedsSentence && <p>{clinicalNeedsSentence}</p>}
-        {environmentalSentence && <p>{environmentalSentence}</p>}
-        {k2K3TechnologySentence && <p>{k2K3TechnologySentence}</p>}
-        {closingSentence && <p>{closingSentence}</p>}
+
+{selectedFunctionalTasks.length > 0 && (
+  <div style={{ marginTop: '15px' }}>
+    <h3>Functional Characteristics Demonstrated</h3>
+
+    {selectedFunctionalTasks.map((task) => (
+      <p key={task}>• {task}</p>
+    ))}
+  </div>
+)}
+
+	<p>
+  {answers.NEW_PROSTHETIC_USER === 'yes'
+    ? 'The patient presents as a new prosthetic user with the motivation of achieving safe and functional ambulation using a prosthetic device. Prosthetic intervention is expected to improve mobility, independence with activities of daily living, and facilitate return toward the patient’s prior level of function.'
+    : replacementReason === 'irreparable'
+? 'The patient presents as an established prosthetic user whose current prosthesis demonstrates irreparable wear and is no longer able to safely or effectively meet the patient’s functional needs.'
+
+: replacementReason === 'physiological'
+? 'The patient presents with physiological changes affecting socket fit and prosthetic function, necessitating replacement prosthetic management to restore safe and effective ambulation.'
+
+: replacementReason === 'repair_cost'
+? 'The patient’s current prosthesis requires extensive repair, with projected repair costs exceeding 60% of replacement value, making replacement prosthetic intervention medically and economically appropriate.'
+
+: 'The patient is an existing prosthetic user requiring replacement prosthetic evaluation.'}
+</p>
+{selectedDesignFeatures.length > 0 && (
+  <div style={{ marginTop: '20px' }}>
+    <h3>Selected Design Features</h3>
+
+    {designRows
+      .filter((row) =>
+        selectedDesignFeatures.includes(row.id)
+      )
+      .map((row) => (
+        <p key={row.id}>
+          <strong>({row.code})</strong>{' '}
+          {row.clinical_benefit_statement}
+        </p>
+      ))}
+  </div>
+)}
       </div>
 
       <p
