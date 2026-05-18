@@ -19,6 +19,7 @@ function App() {
   const [replacementReason, setReplacementReason] = useState('');
   const [selectedDesignFeatures, setSelectedDesignFeatures] = useState([]);
   const [selectedFunctionalTasks, setSelectedFunctionalTasks] = useState([]);
+  const [designSessionId, setDesignSessionId] = useState('');
 
 const [expandedSections, setExpandedSections] = useState({
   socketDesign: false,
@@ -41,7 +42,32 @@ const [expandedSections, setExpandedSections] = useState({
     softGoods: false,
     protectiveCovers: false,
   });
+const newSessionId = crypto.randomUUID();
+
+localStorage.setItem(
+  'designSessionId',
+  newSessionId
+);
+
+setDesignSessionId(newSessionId);
 };
+
+useEffect(() => {
+  const existingSession = localStorage.getItem('designSessionId');
+
+  if (existingSession) {
+    setDesignSessionId(existingSession);
+  } else {
+    const newSessionId = crypto.randomUUID();
+
+    localStorage.setItem(
+      'designSessionId',
+      newSessionId
+    );
+
+    setDesignSessionId(newSessionId);
+  }
+}, []);
 useEffect(() => {
   const fetchDesignRows = async () => {
     const { data, error } = await supabase
@@ -171,6 +197,9 @@ const kLevelSentence = getKLevelSentence();
       <div style={{ textAlign: 'center' }}>
         <img src={logo} alt="ProsthetIQ Logic Logo" style={{ height: '100px' }} />
         <h1>ProsthetIQ Design</h1>
+<p style={{ fontSize: '12px', color: '#666' }}>
+  Session ID: {designSessionId}
+</p>
       </div>
 
 <h2>Design Phase</h2>
@@ -743,6 +772,26 @@ const kLevelSentence = getKLevelSentence();
         }}
       >
         <h2>Clinical Design Summary</h2>
+<button
+  onClick={() => {
+    window.open(
+      `https://prosthetiq.org?designSession=${designSessionId}`,
+      '_blank'
+    );
+  }}
+  style={{
+    padding: '10px 16px',
+    borderRadius: '6px',
+    border: 'none',
+    backgroundColor: '#6f42c1',
+    color: 'white',
+    cursor: 'pointer',
+    marginBottom: '20px',
+    fontWeight: '700',
+  }}
+>
+  Select Components in ProsthetIQ
+</button>
         <p>
           <strong>K-Level:</strong> {kLevel}
         </p>
