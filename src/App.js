@@ -19,6 +19,7 @@ function App() {
   const [replacementReason, setReplacementReason] = useState('');
   const [selectedDesignFeatures, setSelectedDesignFeatures] = useState([]);
   const [selectedFunctionalTasks, setSelectedFunctionalTasks] = useState([]);
+  const [selectedComponents, setSelectedComponents] = useState([]);
   const [designSessionId, setDesignSessionId] = useState('');
 
 const [expandedSections, setExpandedSections] = useState({
@@ -53,12 +54,41 @@ setDesignSessionId(newSessionId);
 };
 
 useEffect(() => {
-  const existingSession = localStorage.getItem('designSessionId');
+  const params = new URLSearchParams(
+    window.location.search
+  );
 
-  if (existingSession) {
-    setDesignSessionId(existingSession);
-  } else {
-    const newSessionId = crypto.randomUUID();
+  const sessionFromUrl =
+    params.get('designSession');
+
+  if (sessionFromUrl) {
+    localStorage.setItem(
+      'designSessionId',
+      sessionFromUrl
+    );
+
+    setDesignSessionId(sessionFromUrl);
+
+    console.log(
+      'Design Session From URL:',
+      sessionFromUrl
+    );
+
+    return;
+  }
+
+  const existingSession =
+    localStorage.getItem('designSessionId');
+
+  if (
+  existingSession &&
+  existingSession !== 'test123'
+) {
+  setDesignSessionId(existingSession);
+}
+else {
+    const newSessionId =
+      crypto.randomUUID();
 
     localStorage.setItem(
       'designSessionId',
@@ -68,6 +98,7 @@ useEffect(() => {
     setDesignSessionId(newSessionId);
   }
 }, []);
+
 useEffect(() => {
   const fetchDesignRows = async () => {
     const { data, error } = await supabase
@@ -84,6 +115,33 @@ useEffect(() => {
 
   fetchDesignRows();
 }, []);
+
+useEffect(() => {
+  const fetchSelectedComponents = async () => {
+    if (!designSessionId) return;
+
+    const { data, error } = await supabase
+      .from('design_component_selections')
+      .select('*')
+      .eq('session_id', designSessionId);
+
+    if (error) {
+      console.error(
+        'Error fetching selected components:',
+        error
+      );
+    } else {
+      console.log(
+        'Selected components:',
+        data
+      );
+
+      setSelectedComponents(data || []);
+    }
+  };
+
+  fetchSelectedComponents();
+}, [designSessionId]);
 
 const filteredCategories = [
   ...new Set(
@@ -839,6 +897,83 @@ const kLevelSentence = getKLevelSentence();
           {row.clinical_benefit_statement}
         </p>
       ))}
+  </div>
+)}
+{selectedComponents.length > 0 && (
+  <div style={{ marginTop: '20px' }}>
+    <h3>Selected Prosthetic Components</h3>
+
+    {[
+  'FOOT',
+  'KNEE',
+  'HIP',
+  'INTEGRATED'
+].map((type) => {
+      const componentsForType =
+  selectedComponents.filter(
+    (component) =>
+      component.category
+        ?.toUpperCase()
+        .includes(type)
+  );
+
+      if (componentsForType.length === 0)
+        return null;
+
+      return (
+        <div
+          key={type}
+          style={{ marginBottom: '20px' }}
+        >
+          <h4>
+            {type.charAt(0) +
+              type.slice(1).toLowerCase()}
+            :
+          </h4>
+
+          {componentsForType.map(
+            (component) => (
+              <div
+                key={component.id}
+                style={{
+                  marginBottom: '12px',
+                }}
+              >
+                <p>
+                  •{' '}
+                  <strong>
+                    {component.product_name}
+                  </strong>
+                </p>
+
+		<p>{component.category}</p>
+
+                {component.selected_benefits?.map(
+                  (benefit, index) => (
+                    <p
+                      key={index}
+                      style={{
+                        marginLeft: '20px',
+                      }}
+                    >
+                      <strong>
+  			(
+  			{benefit.code}
+  			)
+			</strong>{' '}
+			{benefit.category}{' '}
+			{
+  			benefit.clinical_benefit_statement
+			}
+                    </p>
+                  )
+                )}
+              </div>
+            )
+          )}
+        </div>
+      );
+    })}
   </div>
 )}
       </div>
