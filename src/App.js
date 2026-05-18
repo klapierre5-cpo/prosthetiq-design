@@ -845,6 +845,7 @@ const kLevelSentence = getKLevelSentence();
     color: 'white',
     cursor: 'pointer',
     marginBottom: '20px',
+    display: 'block',
     fontWeight: '700',
   }}
 >
