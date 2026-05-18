@@ -838,16 +838,19 @@ const kLevelSentence = getKLevelSentence();
     );
   }}
   style={{
-    padding: '10px 16px',
-    borderRadius: '6px',
-    border: 'none',
-    backgroundColor: '#6f42c1',
-    color: 'white',
-    cursor: 'pointer',
-    marginBottom: '20px',
-    display: 'block',
-    fontWeight: '700',
-  }}
+  display: 'inline-block',
+  padding: '12px 18px',
+  borderRadius: '8px',
+  border: 'none',
+  backgroundColor: '#6f42c1',
+  color: 'white',
+  cursor: 'pointer',
+  marginTop: '10px',
+  marginBottom: '20px',
+  fontWeight: '700',
+  fontSize: '16px',
+  minWidth: '280px',
+}}
 >
   Select Components in ProsthetIQ
 </button>
