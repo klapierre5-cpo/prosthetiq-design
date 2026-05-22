@@ -1,5 +1,5 @@
 import logo from './assets/prosthetiq_logic_logo.png';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from './supabaseClient';
 
 function App() {
@@ -18,6 +18,7 @@ function App() {
   const [selectedCategory, setSelectedCategory] = useState('');
   const [replacementReason, setReplacementReason] = useState('');
   const [selectedDesignFeatures, setSelectedDesignFeatures] = useState([]);
+  const [selectedBaseCode, setSelectedBaseCode] = useState(null);
   const [selectedFunctionalTasks, setSelectedFunctionalTasks] = useState([]);
   const [selectedComponents, setSelectedComponents] = useState([]);
   const [designSessionId, setDesignSessionId] = useState('');
@@ -35,7 +36,9 @@ const [expandedSections, setExpandedSections] = useState({
   setSelectedCategory('');
   setReplacementReason('');
   setSelectedDesignFeatures([]);
+  setSelectedBaseCode(null);
   setSelectedFunctionalTasks([]);
+  setSelectedComponents([]);
 
   setExpandedSections({
     socketDesign: false,
@@ -116,32 +119,47 @@ useEffect(() => {
   fetchDesignRows();
 }, []);
 
+const fetchSelectedComponents = useCallback(async () => {
+  if (!designSessionId) return;
+
+  const { data, error } = await supabase
+    .from('design_component_selections')
+    .select('*')
+    .eq('session_id', designSessionId);
+
+  if (error) {
+    console.error(
+      'Error fetching selected components:',
+      error
+    );
+  } else {
+    console.log(
+      'Selected components:',
+      data
+    );
+
+    setSelectedComponents(data || []);
+  }
+}, [designSessionId]);
+
 useEffect(() => {
-  const fetchSelectedComponents = async () => {
-    if (!designSessionId) return;
+  fetchSelectedComponents();
+}, [fetchSelectedComponents]);
 
-    const { data, error } = await supabase
-      .from('design_component_selections')
-      .select('*')
-      .eq('session_id', designSessionId);
-
-    if (error) {
-      console.error(
-        'Error fetching selected components:',
-        error
-      );
-    } else {
-      console.log(
-        'Selected components:',
-        data
-      );
-
-      setSelectedComponents(data || []);
-    }
+useEffect(() => {
+  const handleFocus = () => {
+    fetchSelectedComponents();
   };
 
-  fetchSelectedComponents();
-}, [designSessionId]);
+  window.addEventListener('focus', handleFocus);
+
+  return () => {
+    window.removeEventListener(
+      'focus',
+      handleFocus
+    );
+  };
+}, [fetchSelectedComponents]);
 
 const filteredCategories = [
   ...new Set(
@@ -177,6 +195,12 @@ const suspensionRows = designRows.filter(
   (row) =>
     row.category ===
     'Lower Extremity Fit & Suspension'
+);
+
+const baseCodeRows = designRows.filter(
+  (row) =>
+    row.category === selectedCategory &&
+    row.device_phase?.includes(selectedDesignPhase)
 );
 
 const functionalTasks = {
@@ -260,10 +284,10 @@ const kLevelSentence = getKLevelSentence();
 </p>
       </div>
 
-<h2>Design Phase</h2>
+<h2>Treatment Phase</h2>
 
 <p style={instructionStyle}>
-  Select the current prosthetic design phase.
+  Select the current phase of treatment.
 </p>
 
 <select
@@ -287,10 +311,10 @@ const kLevelSentence = getKLevelSentence();
 
 {selectedDesignPhase && (
   <>
-    <h2>Category</h2>
+    <h2>Amputation Level</h2>
 
     <p style={instructionStyle}>
-      Select the anatomical prosthetic category.
+      Select the Amputation Level.
     </p>
 
     <select
@@ -493,6 +517,48 @@ const kLevelSentence = getKLevelSentence();
       </option>
     </select>
   </>
+)}
+
+{baseCodeRows.length > 0 && (
+  <div style={{ marginBottom: '25px' }}>
+    <h2>Base Code</h2>
+
+    <p style={instructionStyle}>
+      Select the base design.
+    </p>
+
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '10px',
+      }}
+    >
+      {baseCodeRows.map((row) => (
+        <label
+          key={row.id}
+          style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '10px',
+          }}
+        >
+          <input
+            type="radio"
+            name="baseCode"
+            checked={selectedBaseCode?.id === row.id}
+            onChange={() => setSelectedBaseCode(row)}
+            style={{ marginTop: '4px' }}
+          />
+
+          <span>
+            <strong>({row.code})</strong>{' '}
+            {row.construction_type}
+          </span>
+        </label>
+      ))}
+    </div>
+  </div>
 )}
 
 {socketDesignRows.length > 0 && (
@@ -887,6 +953,19 @@ const kLevelSentence = getKLevelSentence();
 
 : 'The patient is an existing prosthetic user requiring replacement prosthetic evaluation.'}
 </p>
+
+{selectedBaseCode && (
+  <div style={{ marginTop: '20px' }}>
+    <h3>Selected Base Prosthetic Design</h3>
+
+    <p>
+      <strong>({selectedBaseCode.code})</strong>{' '}
+      <strong>{selectedBaseCode.construction_type}</strong>{' '}
+      — {selectedBaseCode.clinical_benefit_statement}
+    </p>
+  </div>
+)}
+
 {selectedDesignFeatures.length > 0 && (
   <div style={{ marginTop: '20px' }}>
     <h3>Selected Design Features</h3>
@@ -897,9 +976,10 @@ const kLevelSentence = getKLevelSentence();
       )
       .map((row) => (
         <p key={row.id}>
-          <strong>({row.code})</strong>{' '}
-          {row.clinical_benefit_statement}
-        </p>
+  <strong>({row.code})</strong>{' '}
+  <strong>{row.construction_type}</strong> —{' '}
+  {row.clinical_benefit_statement}
+</p>
       ))}
   </div>
 )}
@@ -982,38 +1062,19 @@ const kLevelSentence = getKLevelSentence();
 )}
       </div>
 
-      <p
+            <p
         style={{
-          marginTop: '15px',
-          fontSize: '12px',
+          marginTop: '20px',
+          fontSize: '13px',
           color: '#666',
           textAlign: 'center',
+          lineHeight: '1.5',
         }}
       >
-        ProsthetIQ Logic is intended for educational and clinical reference purposes only.
-        For more detailed information, please refer to the Medicare Local Coverage Determination (LCD)
-        and Policy Article currently in effect for lower-limb prosthetic components.
-        <br />
-        <br />
-        View LCD L33787 – Lower Limb Prostheses (
-        <a
-          href="https://www.cms.gov/medicare-coverage-database/view/lcd.aspx?LCDId=33787"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          L33787
-        </a>
-        )
-        <br />
-        View Policy Article A52496 – Lower Limb Prostheses (
-        <a
-          href="https://www.cms.gov/medicare-coverage-database/view/article.aspx?articleId=52496"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          A52496
-        </a>
-        )
+        ProsthetIQ is intended to support clinical decision-making and
+        documentation workflows. Clinicians remain responsible for
+        verifying medical necessity, product specifications, coverage
+        criteria, and the accuracy of all submitted documentation.
       </p>
     </div>
   );
