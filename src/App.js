@@ -30,7 +30,21 @@ const [expandedSections, setExpandedSections] = useState({
   protectiveCovers: false,
 });
 
- const clearAll = () => {
+const clearAll = async () => {
+  if (designSessionId) {
+    const { error } = await supabase
+      .from('design_component_selections')
+      .delete()
+      .eq('session_id', designSessionId);
+
+    if (error) {
+      console.error(
+        'Error clearing design component selections:',
+        error
+      );
+    }
+  }
+
   setAnswers({});
   setSelectedDesignPhase('');
   setSelectedCategory('');
@@ -46,14 +60,15 @@ const [expandedSections, setExpandedSections] = useState({
     softGoods: false,
     protectiveCovers: false,
   });
-const newSessionId = crypto.randomUUID();
 
-localStorage.setItem(
-  'designSessionId',
-  newSessionId
-);
+  const newSessionId = crypto.randomUUID();
 
-setDesignSessionId(newSessionId);
+  localStorage.setItem(
+    'designSessionId',
+    newSessionId
+  );
+
+  setDesignSessionId(newSessionId);
 };
 
 useEffect(() => {
@@ -272,7 +287,73 @@ const functionalTasks = {
 
 const kLevel = getKLevel();
 const kLevelSentence = getKLevelSentence();
-  
+
+const copyClinicalSummary = async () => {
+  const selectedFeatureRows = designRows.filter((row) =>
+    selectedDesignFeatures.includes(row.id)
+  );
+
+  const text = `
+Clinical Design Summary
+
+K-Level: ${kLevel}
+
+The patient is being evaluated for a ${selectedDesignPhase || '________'} prosthetic design.
+
+${kLevelSentence}
+
+Functional Characteristics Demonstrated:
+${selectedFunctionalTasks.length > 0
+  ? selectedFunctionalTasks.map((task) => `• ${task}`).join('\n')
+  : '• No functional characteristics selected'}
+
+Patient Presentation:
+${answers.NEW_PROSTHETIC_USER === 'yes'
+  ? 'The patient presents as a new prosthetic user with the motivation of achieving safe and functional ambulation using a prosthetic device. Prosthetic intervention is expected to improve mobility, independence with activities of daily living, and facilitate return toward the patient’s prior level of function.'
+  : replacementReason === 'irreparable'
+  ? 'The patient presents as an established prosthetic user whose current prosthesis demonstrates irreparable wear and is no longer able to safely or effectively meet the patient’s functional needs.'
+  : replacementReason === 'physiological'
+  ? 'The patient presents with physiological changes affecting socket fit and prosthetic function, necessitating replacement prosthetic management to restore safe and effective ambulation.'
+  : replacementReason === 'repair_cost'
+  ? 'The patient’s current prosthesis requires extensive repair, with projected repair costs exceeding 60% of replacement value, making replacement prosthetic intervention medically and economically appropriate.'
+  : 'The patient is an existing prosthetic user requiring replacement prosthetic evaluation.'}
+
+Selected Base Prosthetic Design:
+${selectedBaseCode
+  ? `(${selectedBaseCode.code}) ${selectedBaseCode.construction_type} — ${selectedBaseCode.clinical_benefit_statement}`
+  : 'No base prosthetic design selected'}
+
+Selected Design Features:
+${selectedFeatureRows.length > 0
+  ? selectedFeatureRows
+      .map(
+        (row) =>
+          `(${row.code}) ${row.construction_type} — ${row.clinical_benefit_statement}`
+      )
+      .join('\n')
+  : 'No design features selected'}
+
+Selected Prosthetic Components:
+${selectedComponents.length > 0
+  ? selectedComponents
+      .map(
+        (component) =>
+          `• ${component.product_name}\n${component.category}\n${
+            component.selected_benefits
+              ?.map(
+                (benefit) =>
+                  `(${benefit.code}) ${benefit.category} ${benefit.clinical_benefit_statement}`
+              )
+              .join('\n') || ''
+          }`
+      )
+      .join('\n\n')
+  : 'No prosthetic components selected'}
+`;
+
+  await navigator.clipboard.writeText(text.trim());
+  alert('Clinical Design Summary copied to clipboard.');
+};
 
   return (
     <div style={{ padding: '30px', maxWidth: '900px', margin: '0 auto' }}>
@@ -871,21 +952,43 @@ const kLevelSentence = getKLevelSentence();
 )}
   </>
 )}
-             <div style={{ marginTop: '20px' }}>
-        <button
-          onClick={clearAll}
-          style={{
-            padding: '10px 16px',
-            borderRadius: '6px',
-            border: 'none',
-            backgroundColor: '#444',
-            color: 'white',
-            cursor: 'pointer',
-          }}
-        >
-          Clear All
-        </button>
-      </div>
+             <div
+  style={{
+    marginTop: '20px',
+    display: 'flex',
+    gap: '12px',
+    flexWrap: 'wrap',
+  }}
+>
+  <button
+    onClick={clearAll}
+    style={{
+      padding: '10px 16px',
+      borderRadius: '6px',
+      border: 'none',
+      backgroundColor: '#444',
+      color: 'white',
+      cursor: 'pointer',
+    }}
+  >
+    Clear All
+  </button>
+
+  <button
+    onClick={copyClinicalSummary}
+    style={{
+      padding: '10px 16px',
+      borderRadius: '6px',
+      border: 'none',
+      backgroundColor: '#6f42c1',
+      color: 'white',
+      cursor: 'pointer',
+      fontWeight: '700',
+    }}
+  >
+    Copy Text
+  </button>
+</div>
 
       <div
         style={{
