@@ -159,6 +159,12 @@ const fetchSelectedComponents = useCallback(async () => {
 
 useEffect(() => {
   fetchSelectedComponents();
+
+  const intervalId = setInterval(() => {
+    fetchSelectedComponents();
+  }, 2000);
+
+  return () => clearInterval(intervalId);
 }, [fetchSelectedComponents]);
 
 useEffect(() => {
